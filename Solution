@@ -1,0 +1,85 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace PocketGoogle
+{
+    public class Indexer : IIndexer
+    {
+        private int id { get; set; }
+        private int index { get; set; }
+        private Dictionary<string, DataStorage> storeByWords = new Dictionary<string, DataStorage>();
+        private Dictionary<int, List<DataStorage>> storeById = new Dictionary<int, List<DataStorage>>();
+
+        public void Add(int id, string documentText)
+        {
+            var arr = documentText.Split(new char[] { ' ', '.', ',', '!', '?', ':', '-', '\r', '\n' });
+            this.id = id;
+            index = 0;
+            for (var i = 0; i < arr.Length; i++)
+            {
+                if (i > 0)
+                    index += arr[i - 1].Length + 1;
+                AddToDictionary(arr[i]);
+            }
+        }
+
+        public List<int> GetIds(string word)
+        {
+            var answer = new List<int>();
+            if (storeByWords.ContainsKey(word))
+                foreach (var i in storeByWords[word].InfoAboutWord)
+                    answer.Add(i.Key);
+            return answer;
+        }
+
+        public List<int> GetPositions(int id, string word)
+        {
+            if (storeByWords.ContainsKey(word))
+                if (storeByWords[word].InfoAboutWord.ContainsKey(id))
+                    return storeByWords[word].InfoAboutWord[id];
+            return new List<int>();
+        }
+
+        public void Remove(int id)
+        {
+            foreach (var i in storeById[id])
+            {
+                i.InfoAboutWord.Remove(id);
+                if (i.InfoAboutWord.Count == 0)
+                    storeByWords.Remove(i.word);
+            }
+            storeById.Remove(id);
+        }
+
+        private void AddToDictionary(string word)
+        {
+            if (storeByWords.ContainsKey(word))
+            {
+                if (storeByWords[word].InfoAboutWord.ContainsKey(id))
+                    storeByWords[word].InfoAboutWord[id].Add(index);
+                else
+                    storeByWords[word].InfoAboutWord.Add(id, new List<int> { index });
+            }
+            else
+                storeByWords.Add(word, new DataStorage(id, index, word));
+            if (storeById.ContainsKey(id))
+                storeById[id].Add(storeByWords[word]);
+            else
+                storeById.Add(id, new List<DataStorage> { storeByWords[word] });
+        }
+    }
+
+    class DataStorage
+    {
+        public Dictionary<int, List<int>> InfoAboutWord;
+        public readonly string word;
+        public DataStorage(int id, int index, string word)
+        {
+            InfoAboutWord = new Dictionary<int, List<int>> { { id, new List<int> { index } } };
+            this.word = word;
+        }
+    }
+}
